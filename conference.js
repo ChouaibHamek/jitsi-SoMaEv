@@ -32,6 +32,8 @@ import {
     AVATAR_ID_COMMAND,
     AVATAR_URL_COMMAND,
     EMAIL_COMMAND,
+    ACCEPT_USER,
+    ADD_ACCEPTED_USER,
     authStatusChanged,
     commonUserJoinedHandling,
     commonUserLeftHandling,
@@ -138,7 +140,8 @@ const commands = {
     CUSTOM_ROLE: 'custom-role',
     EMAIL: EMAIL_COMMAND,
     ETHERPAD: 'etherpad',
-    SHARED_VIDEO: 'shared-video'
+    SHARED_VIDEO: 'shared-video',
+    ACCEPT_USER: ACCEPT_USER,
 };
 
 /**
@@ -481,7 +484,7 @@ class ConferenceConnector {
  */
 function disconnect() {
     connection.disconnect();
-    APP.API.notifyConferenceLeft(APP.conference.roomName);
+    // APP.API.notifyConferenceLeft(APP.conference.roomName);
 
     return Promise.resolve();
 }
@@ -1709,11 +1712,11 @@ export default {
             const displayName = user.getDisplayName();
 
             logger.log(`USER ${id} connnected:`, user);
-            APP.API.notifyUserJoined(id, {
-                displayName,
-                formattedDisplayName: appendSuffix(
-                    displayName || interfaceConfig.DEFAULT_REMOTE_DISPLAY_NAME)
-            });
+            // APP.API.notifyUserJoined(id, {
+            //     displayName,
+            //     formattedDisplayName: appendSuffix(
+            //         displayName || interfaceConfig.DEFAULT_REMOTE_DISPLAY_NAME)
+            // });
             APP.UI.addUser(user);
 
             // check the roles for the new user and reflect them
@@ -1994,6 +1997,14 @@ export default {
                         id: from,
                         avatarID: data.value
                     }));
+            });
+
+        room.addCommandListener(this.commands.defaults.ACCEPT_USER,
+            (data, from) => {
+                APP.store.dispatch({
+                      type: ADD_ACCEPTED_USER,
+                      payload: { data, from }
+                    });
             });
 
         APP.UI.addListener(UIEvents.NICKNAME_CHANGED,
@@ -2709,5 +2720,9 @@ export default {
         if (score === -1 || (score >= 1 && score <= 5)) {
             APP.store.dispatch(submitFeedback(score, message, room));
         }
+    },
+
+    acceptUser(userId) {
+      sendData(commands.ACCEPT_USER, userId);
     }
 };

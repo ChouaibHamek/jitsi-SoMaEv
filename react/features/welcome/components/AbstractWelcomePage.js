@@ -54,6 +54,7 @@ export class AbstractWelcomePage extends Component<Props, *> {
         animateTimeoutId: undefined,
         generatedRoomname: '',
         joining: false,
+        askedToJoin: false,
         room: '',
         roomPlaceholder: '',
         updateTimeoutId: undefined
@@ -72,6 +73,7 @@ export class AbstractWelcomePage extends Component<Props, *> {
         this._animateRoomnameChanging
             = this._animateRoomnameChanging.bind(this);
         this._onJoin = this._onJoin.bind(this);
+        this._onAskToJoin = this._onAskToJoin.bind(this);
         this._onRoomChange = this._onRoomChange.bind(this);
         this._updateRoomname = this._updateRoomname.bind(this);
     }
@@ -158,6 +160,19 @@ export class AbstractWelcomePage extends Component<Props, *> {
      */
     _isJoinDisabled() {
         return this.state.joining || !isRoomValid(this.state.room);
+    }
+
+    _onAskToJoin: () => void;
+
+    _onAskToJoin() {
+      console.log("ASKED TO JOIN ROOM");
+      this.setState({ askedToJoin: true });
+      // Implement the logic of sending the request to the owner of the room
+      console.log("room: ", this.state.room);
+      console.log("generated room: ", this.state.generatedRoomname);
+      const onUserAccepted = () => this.setState({ askedToJoin: false });
+      setTimeout(onUserAccepted, 5000);
+      this._onJoin();
     }
 
     _onJoin: () => void;

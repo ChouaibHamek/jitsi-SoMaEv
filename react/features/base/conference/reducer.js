@@ -22,7 +22,8 @@ import {
     SET_PREFERRED_RECEIVER_VIDEO_QUALITY,
     SET_ROOM,
     SET_SIP_GATEWAY_ENABLED,
-    SET_START_MUTED_POLICY
+    SET_START_MUTED_POLICY,
+    ADD_ACCEPTED_USER
 } from './actionTypes';
 import { VIDEO_QUALITY_LEVELS } from './constants';
 import { isRoomValid } from './functions';
@@ -35,7 +36,8 @@ const DEFAULT_STATE = {
     maxReceiverVideoQuality: VIDEO_QUALITY_LEVELS.HIGH,
     password: undefined,
     passwordRequired: undefined,
-    preferredReceiverVideoQuality: VIDEO_QUALITY_LEVELS.HIGH
+    preferredReceiverVideoQuality: VIDEO_QUALITY_LEVELS.HIGH,
+    acceptedUsers: [],
 };
 
 /**
@@ -110,6 +112,16 @@ ReducerRegistry.register(
                 startAudioMutedPolicy: action.startAudioMutedPolicy,
                 startVideoMutedPolicy: action.startVideoMutedPolicy
             };
+
+        case ADD_ACCEPTED_USER:
+          // console.log("+++++++++++++++++++++++++++++++++++++++++");
+          // console.log("+++++++++++++++++++++++++++++++++++++++++");
+          // console.log("+++++++++++++++++++++++++++++++++++++++++");
+          // console.log("+++++++++++++ ACCEPTED USER: ", action.payload);
+          // console.log("+++++++++++++++++++++++++++++++++++++++++");
+          // console.log("+++++++++++++++++++++++++++++++++++++++++");
+          // console.log("+++++++++++++++++++++++++++++++++++++++++");
+          return { state, acceptedUsers: [ ...state.acceptedUsers, action.payload.data.value ] };
         }
 
         return state;

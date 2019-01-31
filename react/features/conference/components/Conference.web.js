@@ -3,6 +3,8 @@
 import _ from 'lodash';
 import React, { Component } from 'react';
 import { connect as reactReduxConnect } from 'react-redux';
+import { getParticipants, kickParticipant } from '../../base/participants';
+import { setFilmstripVisible } from '../../filmstrip';
 
 import VideoLayout from '../../../../modules/UI/videolayout/VideoLayout';
 
@@ -100,6 +102,13 @@ class Conference extends Component<Props> {
     _onShowToolbar: Function;
     _originalOnShowToolbar: Function;
 
+    state = {
+      showWaitingView: true,
+      loadingDisplayedMessage: "Loading...",
+      rolesLoaded: false,
+      showNewUserPortal: false,
+      newUsers: [],
+    };
     /**
      * Initializes a new Conference instance.
      *
@@ -131,6 +140,10 @@ class Conference extends Component<Props> {
      */
     componentDidMount() {
         const { configLocation } = config;
+        // console.log("###############################  TURNING OFF THE FILMSTRIP IN A FEW");
+        // setTimeout(() => this.props.dispatch(setFilmstripVisible(false)), 3000);
+        // console.log("###############################  TURNING ON THE FILMSTRIP IN A FEW");
+        // setTimeout(() => this.props.dispatch(setFilmstripVisible(true)), 10000);
 
         if (configLocation) {
             obtainConfig(configLocation, this.props._room)
@@ -175,6 +188,80 @@ class Conference extends Component<Props> {
         VideoLayout.refreshLayout();
     }
 
+    componentWillReceiveProps(nextProps) {
+      if (nextProps._participants) {
+        // console.log("+++++++++++++++++++++++++++++++++++++++++");
+        // console.log("+++++++++++++ _PARTICIPANTS: ", nextProps._participants);
+        // console.log("+++++++++++++++++++++++++++++++++++++++++");
+        for (var i = 0; i < nextProps._participants.length; i++) {
+          if (nextProps._participants[i].role === "moderator") {
+            this.setState({ rolesLoaded: true });
+          }
+          if (nextProps._participants[i].local) {
+            if (!this.state.localUserID || this.state.localUserID === "local") {
+              // console.log("+++++++++++++++++++++++++++++++++++++++++");
+              // console.log("+++++++++++++ UPDATING LOCAL USER: ", nextProps._participants[i]);
+              // console.log("+++++++++++++++++++++++++++++++++++++++++");
+              this.setState({ localUserID: nextProps._participants[i].id });
+            }
+            if (nextProps._participants[i].role === "moderator") {
+              this.setState({ showWaitingView: false, localUserIsModerator: true });
+            } else if (this.state.rolesLoaded) {
+              this.setState({ loadingDisplayedMessage: "Waiting for moderator to accept..." });
+            }
+          }
+        }
+      }
+      if (nextProps._participants.length > this.props._participants.length && this.state.localUserIsModerator) {
+        console.log("+++++++++++++++++++++++++++++++++++++++++");
+        console.log("+++++++++++++ NEW USER JOINED: ", nextProps._participants);
+        console.log("+++++++++++++++++++++++++++++++++++++++++");
+        // this.props.dispatch(setFilmstripVisible(false));
+        this.setState({ showNewUserPortal: true });
+      }
+      if (!this.state.localUserIsModerator) {
+        // console.log("+++++++++++++++++++++++++++++++++++++++++");
+        // console.log("+++++++++++++ WILL RECEIVE PROPS: ", {
+        //     localUserID: this.state.localUserID,
+        //     acceptedUsers: nextProps._acceptedUsers,
+        //     localUserIsModerator: this.state.localUserIsModerator,
+        //   });
+        // console.log("+++++++++++++++++++++++++++++++++++++++++");
+      }
+      if (this.state.localUserID && nextProps._acceptedUsers && !this.state.localUserIsModerator) {
+        for (var i = 0; i < nextProps._acceptedUsers.length; i++) {;
+          if (nextProps._acceptedUsers[i] === this.state.localUserID) {
+            this.setState({ showWaitingView: false });
+          }
+        }
+      }
+      const newUsersList = [];
+      if (this.props._participants && this.props._acceptedUsers) {
+        for (var i = 0; i < this.props._participants.length; i++) {
+          if (this.props._participants[i].role !== "moderator") {
+            var isAlreadyAccepted = false;
+            for (var j = 0; j < this.props._acceptedUsers.length; j++) {
+              if (this.props._acceptedUsers[j].id === this.props._participants[i].id) {
+                isAlreadyAccepted = true;
+                break;
+              }
+            }
+            if (!isAlreadyAccepted) {
+              newUsersList.push(this.props._participants[i]);
+            }
+          }
+        }
+        if (newUsersList.length === 0 && this.state.localUserIsModerator) {
+          this.setState({ showNewUserPortal: false, newUsersList });
+          // this.props.dispatch(setFilmstripVisible(true));
+        }
+        if (newUsersList.length > 0 && this.state.localUserIsModerator) {
+          this.setState({ showNewUserPortal: true, newUsersList });
+          // this.props.dispatch(setFilmstripVisible(false));
+        }
+      }
+    }
+
     /**
      * Disconnect from the conference when component will be
      * unmounted.
@@ -189,6 +276,35 @@ class Conference extends Component<Props> {
             document.removeEventListener(name, this._onFullScreenChange));
 
         APP.conference.isJoined() && this.props.dispatch(disconnect());
+    }
+
+    acceptUser(userId) {
+      APP.conference.acceptUser(userId);
+    }
+
+    renderWaitingUsersList() {
+      const newUsersList = [];
+      /// TODO: CHANGE THIS LOGIC INTO CYCLE METHOD, to avoid setstate in render
+      if (this.state.newUsersList) {
+        for (var i = 0; i < this.state.newUsersList.length; i++) {
+          const userId = this.state.newUsersList[i].id;
+          newUsersList.push(
+            <li>
+              <h2 style={{ display: "inline" }}>{this.state.newUsersList[i].name}</h2>
+              <h2 style={{ display: "inline", margin: "0 20px" }}>{this.state.newUsersList[i].id}</h2>
+              <button
+                style={{ margin: "0 20px", backgroundColor: "green", display: "inline" }}
+                onClick={() => this.acceptUser(userId)}
+                >ACCEPT</button>
+              <button
+                style={{ backgroundColor: "red", display: "inline" }}
+                onClick={() => this.props.dispatch(kickParticipant(userId))}
+                >REJECT</button>
+            </li>
+            );
+        }
+      }
+      return newUsersList;
     }
 
     /**
@@ -210,25 +326,58 @@ class Conference extends Component<Props> {
                 || VIDEO_QUALITY_LABEL_DISABLED
                 || this.props._iAmRecorder;
 
+        console.log("+++++++++++++++++++++++++++++++++++++++++");
+        console.log("+++++++++++++ _PARTICIPANTS: ", this.props._participants);
+        console.log("+++++++++++++++++++++++++++++++++++++++++");
+
         return (
-            <div
-                className = { this.props._layoutClassName }
-                id = 'videoconference_page'
-                onMouseMove = { this._onShowToolbar }>
-                <Notice />
-                <div id = 'videospace'>
-                    <LargeVideo
-                        hideVideoQualityLabel = { hideVideoQualityLabel } />
-                    <Filmstrip filmstripOnly = { filmstripOnly } />
+          <div
+              className = { this.props._layoutClassName }
+              id = 'videoconference_page'
+              onMouseMove = { this._onShowToolbar }>
+              <Notice />
+              <div id = 'videospace'>
+                  <LargeVideo hideVideoQualityLabel = { hideVideoQualityLabel } />
+                  <Filmstrip filmstripOnly = { filmstripOnly } />
+              </div>
+
+              { filmstripOnly || <Toolbox /> }
+              { filmstripOnly || <Chat /> }
+
+              <NotificationsContainer />
+
+              <CalleeInfoContainer />
+              { this.state.showWaitingView && <div
+                  style={{
+                    position: "absolute",
+                    width: "100%",
+                    height: "100%",
+                    zIndex: "999",
+                    backgroundColor: "rgba(0, 0, 0, 1)",
+                    textAlign: "center",
+                    color: "white",
+                    display: "table",
+                  }}>
+                  <h1 style={{ color: "rgb(255, 255, 255)", verticalAlign: "middle", marginRight: "auto", marginLeft: "auto", display: "table-cell" }}>{this.state.loadingDisplayedMessage}</h1>
+                  {/*<button onClick={this.sendDataToUser.bind(this)}>SEND DATA</button>*/}
                 </div>
-
-                { filmstripOnly || <Toolbox /> }
-                { filmstripOnly || <Chat /> }
-
-                <NotificationsContainer />
-
-                <CalleeInfoContainer />
-            </div>
+              }
+              { this.state.showNewUserPortal && <div
+                  style={{
+                    position: "absolute",
+                    width: "100%",
+                    height: "100%",
+                    zIndex: "999",
+                    backgroundColor: "rgba(0, 0, 0, 0.9)",
+                    textAlign: "center",
+                    color: "white",
+                    display: "table",
+                  }}>
+                  <h1 style={{ color: "rgb(255, 255, 255)", verticalAlign: "middle", marginRight: "auto", marginLeft: "auto" }}>Users waiting to join the call:</h1>
+                  <ul>{this.renderWaitingUsersList()}</ul>
+                </div>
+              }
+          </div>
         );
     }
 
@@ -300,7 +449,9 @@ function _mapStateToProps(state) {
         _iAmRecorder: state['features/base/config'].iAmRecorder,
         _layoutClassName: LAYOUT_CLASSNAMES[currentLayout],
         _room: state['features/base/conference'].room,
-        _shouldDisplayTileView: shouldDisplayTileView(state)
+        _shouldDisplayTileView: shouldDisplayTileView(state),
+        _participants: getParticipants(state),
+        _acceptedUsers: state['features/base/conference'].acceptedUsers,
     };
 }
 

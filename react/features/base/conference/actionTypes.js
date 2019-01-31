@@ -234,3 +234,5 @@ export const SET_SIP_GATEWAY_ENABLED = Symbol('SET_SIP_GATEWAY_ENABLED');
  * }
  */
 export const SET_START_MUTED_POLICY = Symbol('SET_START_MUTED_POLICY');
+
+export const ADD_ACCEPTED_USER = Symbol('ADD_ACCEPTED_USER');

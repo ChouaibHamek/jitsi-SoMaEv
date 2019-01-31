@@ -19,6 +19,8 @@ export const AVATAR_URL_COMMAND = 'avatar-url';
  */
 export const EMAIL_COMMAND = 'email';
 
+export const ACCEPT_USER = 'accept-user';
+
 /**
  * The name of the {@code JitsiConference} property which identifies the URL of
  * the conference represented by the {@code JitsiConference} instance.

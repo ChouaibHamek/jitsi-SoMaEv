@@ -2,15 +2,34 @@
 
 import React from 'react';
 import { connect } from 'react-redux';
+import { Segment, Dimmer, Loader, Menu, Button, Header } from 'semantic-ui-react';
+import { ColorPalette } from '../../base/styles';
 
 import { translate } from '../../base/i18n';
-import { Platform, Watermarks } from '../../base/react';
+import { Platform, Watermarks, LoadingIndicator } from '../../base/react';
 import { CalendarList } from '../../calendar-sync';
 import { RecentList } from '../../recent-list';
 import { SettingsButton, SETTINGS_TABS } from '../../settings';
+import { LargeVideo } from '../../large-video';
+
+// import Webcam from "react-webcam";
 
 import { AbstractWelcomePage, _mapStateToProps } from './AbstractWelcomePage';
 import Tabs from './Tabs';
+
+const endHairCheckButtonStyle = {
+  width: '151px',
+  height: '35px',
+  fontSize: '14px',
+  background: '#0074E0',
+  borderRadius: '4px',
+  color: '#FFFFFF',
+  textAlign: 'center',
+  verticalAlign: 'middle',
+  lineHeight: '35px',
+  cursor: 'pointer',
+  margin: '1em auto',
+}
 
 /**
  * The Web container rendering the welcome page.
@@ -41,7 +60,9 @@ class WelcomePage extends AbstractWelcomePage {
 
             generateRoomnames:
                 interfaceConfig.GENERATE_ROOMNAMES_ON_WELCOME_PAGE,
-            selectedTab: 0
+            selectedTab: 0,
+            showHairCheckPortal: false,
+            videoSrc: null,
         };
 
         /**
@@ -89,7 +110,19 @@ class WelcomePage extends AbstractWelcomePage {
             this._additionalContentRef.appendChild(
                 this._additionalContentTemplate.content.cloneNode(true));
         }
+
+        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia || navigator.oGetUserMedia;
+        if (navigator.getUserMedia) {
+            navigator.getUserMedia({video: true}, this.handleVideo.bind(this), this.videoError);
+        }
     }
+
+    handleVideo(stream) {
+      // Update the state, triggering the component to re-render with the correct stream
+      this.setState({ videoSrc: window.URL.createObjectURL(stream) });
+    }
+
+    videoError() { }
 
     /**
      * Removes the classname used for custom styling of the welcome page.
@@ -113,61 +146,107 @@ class WelcomePage extends AbstractWelcomePage {
         const { t } = this.props;
         const { APP_NAME } = interfaceConfig;
         const showAdditionalContent = this._shouldShowAdditionalContent();
+        const showWaitingForAcceptanceLoader = this.state.askedToJoin;
+        const videoConstraints = {
+          width: 1280,
+          height: 720,
+          facingMode: "user"
+        };
 
         return (
-            <div
-                className = { `welcome ${showAdditionalContent
-                    ? 'with-content' : 'without-content'}` }
-                id = 'welcome_page'>
-                <div className = 'welcome-watermark'>
-                    <Watermarks />
-                </div>
-                <div className = 'header'>
-                    <div className = 'welcome-page-settings'>
-                        <SettingsButton
-                            defaultTab = { SETTINGS_TABS.CALENDAR } />
-                    </div>
-                    <div className = 'header-image' />
-                    <div className = 'header-text'>
-                        <h1 className = 'header-text-title'>
-                            { t('welcomepage.title') }
-                        </h1>
-                        <p className = 'header-text-description'>
-                            { t('welcomepage.appDescription',
-                                { app: APP_NAME }) }
-                        </p>
-                    </div>
-                    <div id = 'enter_room'>
-                        <div className = 'enter-room-input-container'>
-                            <div className = 'enter-room-title'>
-                                { t('welcomepage.enterRoomTitle') }
-                            </div>
-                            <form onSubmit = { this._onFormSubmit }>
-                                <input
-                                    autoFocus = { true }
-                                    className = 'enter-room-input'
-                                    id = 'enter_room_field'
-                                    onChange = { this._onRoomChange }
-                                    placeholder
-                                        = { this.state.roomPlaceholder }
-                                    type = 'text'
-                                    value = { this.state.room } />
-                            </form>
-                        </div>
-                        <div
-                            className = 'welcome-page-button'
-                            id = 'enter_room_button'
-                            onClick = { this._onJoin }>
-                            { t('welcomepage.go') }
-                        </div>
-                    </div>
-                    { this._renderTabs() }
-                </div>
-                { showAdditionalContent
-                    ? <div
-                        className = 'welcome-page-content'
-                        ref = { this._setAdditionalContentRef } />
-                    : null }
+            <div>
+              { this.state.showHairCheckPortal && (
+                  <Segment basic className="call-view" style={{ margin: 0, padding: 0, height: '100%' }}>
+                    <div style={endHairCheckButtonStyle} onClick={() => this.setState({ showHairCheckPortal: false })}>End Hair Check</div>
+                    <Segment attached="bottom">
+                      <video src={this.state.videoSrc} style={{ marginTop: 35 }} autoPlay="true" />
+                    </Segment>
+                  </Segment>
+                )
+              }
+              {
+                !this.state.showHairCheckPortal && (
+                  <div
+                      className = { `welcome ${showAdditionalContent
+                          ? 'with-content' : 'without-content'}` }
+                      id = 'welcome_page'>
+                      <div className = 'welcome-watermark'>
+                          <Watermarks />
+                      </div>
+                      <div className = 'header'>
+                          <div className = 'welcome-page-settings'>
+                              <SettingsButton
+                                  defaultTab = { SETTINGS_TABS.CALENDAR } />
+                          </div>
+                          <div className = 'header-image' />
+                          <div className = 'header-text'>
+                              <h1 className = 'header-text-title'>
+                                  { t('welcomepage.title') }
+                              </h1>
+                              <p className = 'header-text-description'>
+                                  { t('welcomepage.appDescription',
+                                      { app: APP_NAME }) }
+                              </p>
+                          </div>
+                          <div id = 'enter_room'>
+                              <div className = 'enter-room-input-container'>
+                                  <div className = 'enter-room-title'>
+                                      { t('welcomepage.enterRoomTitle') }
+                                  </div>
+                                  <form onSubmit = { this._onFormSubmit }>
+                                      <input
+                                          autoFocus = { true }
+                                          className = 'enter-room-input'
+                                          id = 'enter_room_field'
+                                          onChange = { this._onRoomChange }
+                                          placeholder
+                                              = { this.state.roomPlaceholder }
+                                          type = 'text'
+                                          value = { this.state.room } />
+                                  </form>
+                              </div>
+                              <div
+                                  className = 'welcome-page-button'
+                                  id = 'enter_room_button'
+                                  onClick = { this._onAskToJoin }>
+                                  { t('welcomepage.go') }
+                              </div>
+                              <div
+                                  className = 'welcome-page-button'
+                                  id = 'enter_room_button'
+                                  onClick = { () => this.setState({ showHairCheckPortal: true }) }
+                                  style={{ width: '110px', marginLeft: '1em' }}>
+                                  Hair Check
+                              </div>
+                          </div>
+                          { this._renderTabs() }
+                      </div>
+                      { showAdditionalContent
+                          ? <div
+                              className = 'welcome-page-content'
+                              ref = { this._setAdditionalContentRef } />
+                          : null }
+                      {
+                        // showWaitingForAcceptanceLoader
+                        // ?
+                        //   <div
+                        //     style={{
+                        //       position: "absolute",
+                        //       width: "100%",
+                        //       height: "100%",
+                        //       zIndex: "999",
+                        //       backgroundColor: "rgba(0, 0, 0, 0.9)",
+                        //       textAlign: "center",
+                        //       color: "white",
+                        //       display: "table",
+                        //     }}>
+                        //     <h1 style={{ color: "rgb(255, 255, 255)", verticalAlign: "middle", display: "table-cell" }}>Waiting for owner to accept...</h1>
+                        //   </div>
+                        // : null
+                      }
+                  </div>
+                )
+              }
             </div>
         );
     }
@@ -182,7 +261,7 @@ class WelcomePage extends AbstractWelcomePage {
     _onFormSubmit(event) {
         event.preventDefault();
 
-        this._onJoin();
+        this._onAskToJoin();
     }
 
     /**

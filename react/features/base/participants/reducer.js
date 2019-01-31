@@ -71,6 +71,7 @@ ReducerRegistry.register('features/base/participants', (state = [], action) => {
         return state.map(p => _participant(p, action));
 
     case PARTICIPANT_JOINED:
+        console.log("############################################### USER JOINED: ", state);
         return [ ...state, _participantJoined(action) ];
 
     case PARTICIPANT_LEFT: {
